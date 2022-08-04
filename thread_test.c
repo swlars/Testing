@@ -25,7 +25,7 @@ void * run(void * vargp)
     ret = pthread_rwlock_wrlock(&(args->rwlock));
     if (0!=ret)
     {
-      perror("pthread_rw_lock_wrlock");
+      printf("pthread_rw_lock_wrlock: %i", ret);
     }
     args->modify_this += 1;
     args->modify_that += 1;
@@ -52,13 +52,13 @@ int main()
     ret = pthread_rwlock_init(&(silk_threads[i].rwlock), &attr);
     if (0!=ret)
     {
-      perror("pthread_rwlock_init");
+      printf("pthread_rwlock_init: %i\n", ret);
     }
 
     ret = pthread_create(&(silk_threads[i].thread_id), NULL, run, &silk_threads[i]);
     if (0 !=ret)
     {
-      perror("pthread_rwlock_init");
+      printf("pthread_rwlock_init %i\n", ret);
     }
   }
   printf("Sleeping\n");
