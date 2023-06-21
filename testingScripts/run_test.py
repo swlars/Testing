@@ -12,25 +12,20 @@ import tkinter
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import datetime
-import time
 
 # NOTES:
-# OUTPUT DIRECTORIES
-# TODO
-
-
 # UDP Test
 # Tuning
 # Socket buffer size, larger iperf3 socket buffers
 
-NUM_THREADS = 16 
+NUM_THREADS = 8
 RUNS_PER_THREAD = 10 
 
 #NUM_THREADS = 8
 #RUNS_PER_THREAD = 10
 
 IPERF3_CONTROL = "/home/swlarsen/git/esnet/iperf/src/iperf3"
+#IPERF3_TEST = "/home/swlarsen/git/seg/iperf/src/iperf3"
 IPERF3_TEST = "/home/swlarsen/git/seg/iperf/src/iperf3"
 IPERF2="/home/swlarsen/git/iperf2-code/src/iperf"
 
@@ -39,17 +34,6 @@ OUTPUT_DIRECTORY="outputs/"
 
 SERVER_IP = "192.168.127.2"
 PORT="5201"
-
-
-# Make a folder
-def make_folder(name):
-    print("make_folder: {}".format(name))
-    folder_name = "{}_{}".format(name, datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
-    print("time {}".format(folder_name))
-    new_output = os.path.join(OUTPUT_DIRECTORY, folder_name)
-    os.mkdir(new_output, 0o777)
-    return new_output
-
 
 def run(binary, output_directory, filename):
     print("Run")
@@ -61,7 +45,7 @@ def run(binary, output_directory, filename):
         for run in range(0, RUNS_PER_THREAD):
             cmd = [binary, "-c", SERVER_IP, "-J", "-P", "{}".format(test), "-p",PORT]
             print("cmd: {}".format(cmd))
-            output = os.path.join(output_directory, filename.format(test, run))
+            output = output_directory + filename.format(test, run)
             print("opening: {}", output)
             with open(output, "w") as f:
                 t = subprocess.call(cmd, stdout=f, stderr=f)
@@ -73,10 +57,7 @@ def run_control():
     print("Run Control")
     control_filename = "c_{}_{}.txt"
     # /home/swlarsen/git/iperf/src/iperf3 -c 192.168.127.2 --parallel ${i} >> name
-    output = make_folder("control")
-    print("output: {}".format(output))
-    run(binary=IPERF3_CONTROL, output_directory=output, filename=control_filename)
-
+    run(binary=IPERF3_CONTROL, output_directory=OUTPUT_DIRECTORY, filename=control_filename)
 #    for test in range(1, NUM_THREADS+1):
 #        for run in range(0, RUNS_PER_THREAD):
 #            control_cmd = [IPERF3_CONTROL, "-c", SERVER_IP, "-J", "-P", "{}".format(test)]
@@ -92,9 +73,7 @@ def run_test():
     print("Run Test")
     #./src/iperf3 -c 192.168.127.2 --parallel 1
     test_filename = "t_{}_{}.txt"
-    output = make_folder("test")
-    print("output: {}".format(output))
-    run(binary=IPERF3_TEST, output_directory=output, filename=test_filename)
+    run(binary=IPERF3_TEST, output_directory=OUTPUT_DIRECTORY, filename=test_filename)
     #for i in range(1, NUM_THREADS+1):
     #    with open(test_filename.format(i), "a+") as f:
     #        test_cmd = [IPERF3_TEST, "-c", SERVER_IP, "-J", "-P", "{}".format(i)]
@@ -104,11 +83,9 @@ def run_test():
     return
 
 def run_ip2():
-    print("Run ip2")
+    print("Run Test")
     test_filename = "ip2_{}_{}.txt"
-    output = make_folder("test")
-    print("output: {}".format(output))
-    run(binary=IPERF2, output_directory=output, filename=test_filename)
+    run(binary=IPERF2, output_directory=OUTPUT_DIRECTORY, filename=test_filename)
     return
 
 
@@ -116,22 +93,17 @@ import glob
 def summarize_runs(output_directory, filename, summary_filename):
     print("Summarize runs")
     print("Looking in ... {}".format(output_directory))
-
-    # Assume separate directories for each test run
-    directories = os.listdir(output_directory)
-
+    directory = os.listdir(output_directory)
     # TODO probably need to make this so it can handle double digits
     runs = []
-    for directory in directories:
-        print("{}".format(directory))
-        for files in glob.glob(os.path.join(output_directory, directory, filename.format('*', '*'))):
-            print(files)
-            with open(files, 'r') as f:
-                run = json.load(f)
-                runs.append(run)
-        summary_file = os.path.join(output_directory, directory, summary_filename)
-        with open(summary_file, 'w') as s:
-            s.write(json.dumps(runs))
+    for files in glob.glob(output_directory + filename.format('*', '*')):
+        print(files)
+        with open(files, 'r') as f:
+            run = json.load(f)
+            runs.append(run)
+    summary_file = output_directory + '/' + summary_filename
+    with open(summary_file, 'w') as s:
+        s.write(json.dumps(runs))
     return
 
 def parse_with_json(output_directory, filename, summary_filename):
@@ -160,55 +132,21 @@ def parse_with_json(output_directory, filename, summary_filename):
     with open(sum_file, "w") as s:
         s.write(json.dumps(summary))
 
-def parse_summary_with_json(output_directory, summary_filename, output):
-    directories = os.listdir(output_directory)
-    for directory in directories:
-        # Look at the summary file in each directory
-        sum_file = os.path.join(output_directory, directory, summary_filename)
-        runs = []
-        with open(sum_file, "r") as f:
-            runs = json.load(f)
-
-        summary = {}
-        throughput_per_thread = [[]]
-        cpu_utilization_per_thread = [[]]
-
-        for run in runs:
-            #print(run)
-            threads = -1
-
-            if "num_streams" in run["start"]:
-                print("JSON: {}".format(run["start"]["num_streams"]))
-                threads = run["start"]["num_streams"]
-            else:
-                print("num_streams 0")
-                threads = 1
-            print("            {}".format(run["end"]["cpu_utilization_percent"]))
-            #print("            {}".format(run["end"]))
-
-            # Make sure the length is correct
-            if threads > len(throughput_per_thread):
-                t = threads 
-                while t <= len(throughput_per_thread):
-                    throughput_per_thread.append([])
-                    cpu_utilization_per_thread.append([])
-                    t += 1
-
-            # Add the run
-            print("threads {} tpt: {}".format(threads, throughput_per_thread))
-            throughput_per_thread[threads-1].append(run["end"]["sum_sent"]["bits_per_second"])
-            cpu_utilization_per_thread[threads-1].append(run["end"]["cpu_utilization_percent"])
-            
+def parse_summary_with_json(output_directory, summary_filename):
+    sum_file = output_directory + summary_filename
+    runs = []
+    with open(sum_file, "r") as f:
+        runs = json.load(f)
+    for run in runs:
+        #print(run)
+        if "num_streams" in run["start"]:
+            print("JSON: {}".format(run["start"]["num_streams"]))
+        else:
+            print("num_streams 0")
+            print("            {}".format(run["start"]))
 
         #print("JSON: {}".format(run["end"]["sum_sent"]["bits_per_second"]))
         #print("JSON: {}".format(run["end"]["sum_recv"]["bits_per_second"]))
-        summary["throughput_per_thread"] = throughput_per_thread
-        summary["cpu_utilization_per_thread"] = cpu_utilization_per_thread
-        print(summary)
-
-        output_file = os.path.join(output_directory, directory, output)
-        with open(output_file, "w") as o:
-            o.write(json.dumps(summary))
 
 
 
@@ -312,16 +250,14 @@ def summarize_ip2_runs():
 
 def main():
     print("main test")
-    #make_folder(name="control")
     
     #run_control()
-    summarize_control_runs()
-    #run_test()
-    parse_summary_with_json(output_directory=OUTPUT_DIRECTORY, summary_filename="CONTROL_SUMMARY.json", output="control_graph.json")
+    #summarize_control_runs()
+    #parse_summary_with_json(output_directory=OUTPUT_DIRECTORY, summary_filename="CONTROL_SUMMARY.json")
     #run_ip2()
     #summarize_ip2_runs()
     #parse_summary_with_json(output_directory=OUTPUT_DIRECTORY, summary_filename="IP2_SUMMARY.json")
-    #run_test()
+    run_test()
 
 
     #parse_control()
