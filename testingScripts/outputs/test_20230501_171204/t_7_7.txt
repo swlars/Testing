@@ -1,0 +1,80 @@
+{
+	"start":	{
+		"connected":	[{
+				"socket":	5,
+				"local_host":	"192.168.128.2",
+				"local_port":	50910,
+				"remote_host":	"192.168.127.2",
+				"remote_port":	5201
+			}, {
+				"socket":	7,
+				"local_host":	"192.168.128.2",
+				"local_port":	50912,
+				"remote_host":	"192.168.127.2",
+				"remote_port":	5201
+			}, {
+				"socket":	9,
+				"local_host":	"192.168.128.2",
+				"local_port":	50914,
+				"remote_host":	"192.168.127.2",
+				"remote_port":	5201
+			}, {
+				"socket":	11,
+				"local_host":	"192.168.128.2",
+				"local_port":	50916,
+				"remote_host":	"192.168.127.2",
+				"remote_port":	5201
+			}, {
+				"socket":	13,
+				"local_host":	"192.168.128.2",
+				"local_port":	50918,
+				"remote_host":	"192.168.127.2",
+				"remote_port":	5201
+			}, {
+				"socket":	15,
+				"local_host":	"192.168.128.2",
+				"local_port":	50920,
+				"remote_host":	"192.168.127.2",
+				"remote_port":	5201
+			}],
+		"version":	"iperf 3.13-mt-beta2",
+		"system_info":	"Linux netlab-pt8.es.net 5.4.0-91-generic #102-Ubuntu SMP Fri Nov 5 16:31:28 UTC 2021 x86_64",
+		"timestamp":	{
+			"time":	"Tue, 02 May 2023 00:23:15 GMT",
+			"timesecs":	1682986995
+		},
+		"connecting_to":	{
+			"host":	"192.168.127.2",
+			"port":	5201
+		},
+		"cookie":	"c6rmvlf4rav5tsjhu3w3xxc3k34damhn7xgy",
+		"tcp_mss_default":	8948,
+		"target_bitrate":	0,
+		"fq_rate":	0,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	65536,
+		"rcvbuf_actual":	87380,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	65536,
+		"rcvbuf_actual":	87380,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	65536,
+		"rcvbuf_actual":	87380,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	65536,
+		"rcvbuf_actual":	87380,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	65536,
+		"rcvbuf_actual":	87380,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	65536,
+		"rcvbuf_actual":	87380,
+		"sock_bufsize":	0,
+		"sndbuf_actual":	65536,
+		"rcvbuf_actual":	87380
+	},
+	"intervals":	[],
+	"end":	{
+	},
+	"error":	"unable to initialize stream: Transport endpoint is not connected"
+}
