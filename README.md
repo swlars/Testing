@@ -32,4 +32,6 @@ make
      Python
 ##################################################
 python3 -m pip install seaborn
+python3 -m pip install Tk
+python3 tp.py
 

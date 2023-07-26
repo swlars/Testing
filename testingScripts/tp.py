@@ -10,9 +10,11 @@ import json
 from collections import defaultdict
 import tkinter
 import matplotlib
-matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import datetime
+import string
 import time
 
 # NOTES:
@@ -30,9 +32,13 @@ RUNS_PER_THREAD = 10
 #NUM_THREADS = 8
 #RUNS_PER_THREAD = 10
 
-IPERF3_CONTROL = "/home/swlarsen/git/esnet/iperf/src/iperf3"
-IPERF3_TEST = "/home/swlarsen/git/seg/iperf/src/iperf3"
-IPERF2="/home/swlarsen/git/iperf2-code/src/iperf"
+#IPERF3_CONTROL = "/home/swlarsen/git/esnet/iperf/src/iperf3"
+#IPERF3_TEST = "/home/swlarsen/git/seg/iperf/src/iperf3"
+#IPERF2="/home/swlarsen/git/iperf2-code/src/iperf"
+
+IPERF3_CONTROL = "/Users/swlarsen/git/esnet/iperf/src/iperf3"
+IPERF3_TEST = "/Users/swlarsen/git/seg/iperf/src/iperf3"
+IPERF2="/Users/swlarsen/git/iperf2-code/src/iperf"
 
 OUTPUT_DIRECTORY="outputs/"
 # CONTROL/TEST/IP2_timestamp
@@ -118,6 +124,7 @@ def summarize_runs(output_directory, filename, summary_filename):
     print("Looking in ... {}".format(output_directory))
 
     # Assume separate directories for each test run
+    #directories = [directory for directory in os.listdir(output_directory) if directory.startswith()]
     directories = os.listdir(output_directory)
 
     # TODO probably need to make this so it can handle double digits
@@ -161,6 +168,12 @@ def parse_with_json(output_directory, filename, summary_filename):
         s.write(json.dumps(summary))
 
 def parse_summary_with_json(output_directory, summary_filename, output):
+    # TODO: CHECK IF OUTPUT DIRECTORY EXISTS
+    print("Parsing summary {} with JSON".format(summary_filename))
+
+    if not os.path.exists(output_directory):
+        print("ERROR: output directory {} does not exist!".format(output_directory))
+        return
     directories = os.listdir(output_directory)
     for directory in directories:
         # Look at the summary file in each directory
@@ -204,7 +217,7 @@ def parse_summary_with_json(output_directory, summary_filename, output):
         #print("JSON: {}".format(run["end"]["sum_recv"]["bits_per_second"]))
         summary["throughput_per_thread"] = throughput_per_thread
         summary["cpu_utilization_per_thread"] = cpu_utilization_per_thread
-        print(summary)
+        #print(summary)
 
         output_file = os.path.join(output_directory, directory, output)
         with open(output_file, "w") as o:
@@ -224,23 +237,85 @@ def print_graph(filename):
     print("opening {}".format(filename))
     with open(filename, "r") as f:
         data = json.load(f)
+    if not data:
+        print("ERROR data is None")
+        exit(-1)
+    print()
+    print()
+    print()
+    print("opening {}".format(filename))
+    print("DATA: {}".format(data))
+    print()
+    print()
     data_x = [z for z in range(1, NUM_THREADS)]
     print(data_x)
-    data_y = [statistics.median(y) for (x, y) in data]
-    print(data_y)
-    df = pandas.DataFrame(data)
+    #data_y = [statistics.median(y) for (x, y) in data]
+    #data_y = [statistics.median(y) for y in data]
+    #data_y =[]
+    #for (x, y) in data["cpu_utilization_per_thread"]:
+    #host_total
+    #remote_system
+    print("cpu_utilization_per_thread")
+    for x in data["cpu_utilization_per_thread"]:
+        #print("{}:{}".format(x, y))
+        print("BOO ")
+        print(len(x))
+        for y in x:
+            print(len(y))
+            print("HI {}".format(y))
+        #print("{}:{}".format(x, y))
+        #print("{}".format(x["host_total"]))
+        #print("{}".format(x["host_system"]))
+        #print("{}".format(x["host_user"]))
+        #print("{}".format(x["remote_total"]))
+        #print("{}".format(x["remote_system"]))
+        #print("{}".format(x["remote_user"]))
 
-    seaborn.lineplot(data=df)#, x=data_x, y=data_y)
+    # throughput_per_thread
+    #data_y = [y for y in data]
+    # cpu_utilization_per_thread
+    #print(data_y)
+    cpu_util = pandas.DataFrame(data["cpu_utilization_per_thread"])
+    print("cpu_util {}".format(cpu_util))
+    #data_y = [statistics.median(y) for y in data]
+    #seaborn.lineplot(data=cpu_util)#, x=data_x, y=data_y)
+    seaborn.lineplot(data=cpu_util)#,x=data_x, y=data_y)
+
+    throughput = pandas.DataFrame(data["throughput_per_thread"])
+    print("throughput {}".format(throughput))
+    seaborn.lineplot(data=throughput)#, x=data_x, y=data_y)
     plt.show()
-    plt.savefig("here.png")
+    #plt.savefig("here.png")
 
+    #c_df = pandas.DataFrame(c)
+    #p_df = pandas.DataFrame(p)
+
+    #seaborn.lineplot(data=c_df, x=control_x, y=control_y)
+    #seaborn.lineplot(data=p_df, x=thread_x, y=thread_y)
     return
 
 def print_control():
-    summary_filename="control_summary.json"
     output_directory = OUTPUT_DIRECTORY
-    sum_file = output_directory + summary_filename
-    print_graph(sum_file)
+    if not os.path.exists(output_directory):
+        print("ERROR: output directory {} does not exist!".format(output_directory))
+        return
+    #summary_filename="control_summary.json"
+    summary_filename="control_graph.json"
+
+    directories = os.listdir(output_directory)
+    for directory in directories:
+        if not directory.startswith("control"):
+            continue
+        # Look at the summary file in each directory
+        sum_file = os.path.join(output_directory, directory, summary_filename)
+        print("sum_file: {}".format(sum_file))
+        if not os.path.exists(sum_file):
+            print("ERROR: sum_file {} does not exist".format(sum_file))
+        print_graph(sum_file)
+        #runs = []
+        #with open(sum_file, "r") as f:
+        #    runs = json.load(f)
+    #sum_file = output_directory + summary_filename
     return
 
 def print_test():
@@ -331,6 +406,8 @@ def main():
 
     #run_test()
     #print_test()
+    #print_graph()
+    print_control()
 
 if __name__ == "__main__":
     print("main")
