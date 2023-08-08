@@ -20,6 +20,7 @@ import time
 # NOTES:
 # OUTPUT DIRECTORIES
 # TODO
+# 
 
 
 # UDP Test
@@ -122,23 +123,36 @@ import glob
 def summarize_runs(output_directory, filename, summary_filename):
     print("Summarize runs")
     print("Looking in ... {}".format(output_directory))
+    print("filename: {} :: {}".format(filename, filename.split('_')))
 
     # Assume separate directories for each test run
-    #directories = [directory for directory in os.listdir(output_directory) if directory.startswith()]
-    directories = os.listdir(output_directory)
+    directories = [directory for directory in os.listdir(output_directory) if directory.startswith(filename.split('_')[0])]
 
     # TODO probably need to make this so it can handle double digits
-    runs = []
+    #runs = {}
+    # TODO get_run_from_name() ... etc ?
+
+    # TODO some of this is hard coded
+    threads = [ []] 
+    print(threads)
     for directory in directories:
         print("{}".format(directory))
         for files in glob.glob(os.path.join(output_directory, directory, filename.format('*', '*'))):
-            print(files)
+            path = files.split('/')
+            name = path[-1].split('_')
+
+            num_threads = int(name[1])
+            run_num = int(name[-1].split('.')[0])
+
             with open(files, 'r') as f:
                 run = json.load(f)
-                runs.append(run)
+            if num_threads > len(threads):
+                while len(threads) <= num_threads:
+                    threads.append([])
+            threads[num_threads].append(run)
         summary_file = os.path.join(output_directory, directory, summary_filename)
         with open(summary_file, 'w') as s:
-            s.write(json.dumps(runs))
+            s.write(json.dumps(threads))
     return
 
 def parse_with_json(output_directory, filename, summary_filename):
@@ -168,61 +182,74 @@ def parse_with_json(output_directory, filename, summary_filename):
         s.write(json.dumps(summary))
 
 def parse_summary_with_json(output_directory, summary_filename, output):
+    # TODO this things the files have the same prefix!!!!!!
+
     # TODO: CHECK IF OUTPUT DIRECTORY EXISTS
     print("Parsing summary {} with JSON".format(summary_filename))
 
     if not os.path.exists(output_directory):
         print("ERROR: output directory {} does not exist!".format(output_directory))
         return
-    directories = os.listdir(output_directory)
+
+    directories = [directory for directory in os.listdir(output_directory) if directory.startswith(summary_filename.split('_')[0])]
     for directory in directories:
         # Look at the summary file in each directory
         sum_file = os.path.join(output_directory, directory, summary_filename)
-        runs = []
+        #runs = []
+        threads = []
         with open(sum_file, "r") as f:
-            runs = json.load(f)
+            threads = json.load(f)
 
         summary = {}
-        throughput_per_thread = [[]]
-        cpu_utilization_per_thread = [[]]
+        throughput_per_thread_count = [[]]
+        cpu_utilization_per_thread_count = [[]]
 
-        for run in runs:
-            #print(run)
-            threads = -1
+        # TODO check limits, threads <
 
-            if "num_streams" in run["start"]:
-                print("JSON: {}".format(run["start"]["num_streams"]))
-                threads = run["start"]["num_streams"]
-            else:
-                print("num_streams 0")
-                threads = 1
-            print("            {}".format(run["end"]["cpu_utilization_percent"]))
-            #print("            {}".format(run["end"]))
+        #for run in runs:
+        print("\n\n\n\n\n\n")
+        for thread_num in range(0, len(threads)):
+            print("thread_num : {}".format(thread_num))
 
             # Make sure the length is correct
-            if threads > len(throughput_per_thread):
-                t = threads 
-                while t <= len(throughput_per_thread):
-                    throughput_per_thread.append([])
-                    cpu_utilization_per_thread.append([])
-                    t += 1
+            if thread_num >= len(throughput_per_thread_count):
+                while thread_num >= len(throughput_per_thread_count):
+                    throughput_per_thread_count.append([])
+                    cpu_utilization_per_thread_count.append([])
+            print(threads[thread_num])
 
-            # Add the run
-            print("threads {} tpt: {}".format(threads, throughput_per_thread))
-            throughput_per_thread[threads-1].append(run["end"]["sum_sent"]["bits_per_second"])
-            cpu_utilization_per_thread[threads-1].append(run["end"]["cpu_utilization_percent"])
+            #if thread_num not in threads:
+            #    print("NOPE")
+            #    continue
+            for run in threads[thread_num]:
+                # TODO this is now only for verification
+                if "num_streams" in threads[thread_num][0]["start"]:
+                    print("JSON: {}".format(run["start"]["num_streams"]))
+                    if thread_num != run["start"]["num_streams"]:
+                        print("ERROR: thread_num {} vs num_streams {}".format(thread_num, num_streams))
+                        exit(-1)
+                else:
+                    print("num_streams 0")
+                print("            {}".format(run["end"]["cpu_utilization_percent"]))
+                #print("            {}".format(run["end"]))
+
+                # Add the run
+                #print("threads {} tpt: {}".format(thread_num, throughput_per_thread_count))
+                throughput_per_thread_count[thread_num].append(run["end"]["sum_sent"]["bits_per_second"])
+                cpu_utilization_per_thread_count[thread_num].append(run["end"]["cpu_utilization_percent"])
+                print(throughput_per_thread_count)
+
             
 
         #print("JSON: {}".format(run["end"]["sum_sent"]["bits_per_second"]))
         #print("JSON: {}".format(run["end"]["sum_recv"]["bits_per_second"]))
-        summary["throughput_per_thread"] = throughput_per_thread
-        summary["cpu_utilization_per_thread"] = cpu_utilization_per_thread
+        summary["throughput_per_thread_count"] = throughput_per_thread_count
+        summary["cpu_utilization_per_thread_count"] = cpu_utilization_per_thread_count
         #print(summary)
 
         output_file = os.path.join(output_directory, directory, output)
         with open(output_file, "w") as o:
             o.write(json.dumps(summary))
-
 
 
 def parse_control():
@@ -252,47 +279,92 @@ def print_graph(filename):
     #data_y = [statistics.median(y) for (x, y) in data]
     #data_y = [statistics.median(y) for y in data]
     #data_y =[]
-    #for (x, y) in data["cpu_utilization_per_thread"]:
+    #for (x, y) in data["cpu_utilization_per_thread_count"]:
     #host_total
     #remote_system
-    print("cpu_utilization_per_thread")
-    for x in data["cpu_utilization_per_thread"]:
-        #print("{}:{}".format(x, y))
-        print("BOO ")
-        print(len(x))
-        for y in x:
-            print(len(y))
-            print("HI {}".format(y))
-        #print("{}:{}".format(x, y))
-        #print("{}".format(x["host_total"]))
-        #print("{}".format(x["host_system"]))
-        #print("{}".format(x["host_user"]))
-        #print("{}".format(x["remote_total"]))
-        #print("{}".format(x["remote_system"]))
-        #print("{}".format(x["remote_user"]))
+    util = data["cpu_utilization_per_thread_count"]
+    print("cpu_utilization_per_thread_count")
+    # TODO AUTOMATICALLY GET THREAD
+    host_total_threads = []
 
-    # throughput_per_thread
-    #data_y = [y for y in data]
-    # cpu_utilization_per_thread
-    #print(data_y)
-    cpu_util = pandas.DataFrame(data["cpu_utilization_per_thread"])
-    print("cpu_util {}".format(cpu_util))
-    #data_y = [statistics.median(y) for y in data]
-    #seaborn.lineplot(data=cpu_util)#, x=data_x, y=data_y)
-    seaborn.lineplot(data=cpu_util)#,x=data_x, y=data_y)
+    remote_total_threads = []
 
-    throughput = pandas.DataFrame(data["throughput_per_thread"])
-    print("throughput {}".format(throughput))
-    seaborn.lineplot(data=throughput)#, x=data_x, y=data_y)
+    for thread in util:
+        host_total_per_thread_count = []
+        remote_total_per_thread_count = []
+
+        #print("thread: {}".format(thread))
+
+        for run in thread:
+            host_total_per_thread_count.append(run["host_total"])
+            remote_total_per_thread_count.append(run["remote_total"])
+
+        print("host_total_per_thread_count {}".format(host_total_per_thread_count))
+        #host_total_threads.append(statistics.median(host_total_per_thread_count))
+
+        host_total_threads.append(host_total_per_thread_count)
+        remote_total_threads.append(remote_total_per_thread_count)
+    print("host_total_threads {}".format(host_total_threads))
+    host_total_threads_df = pandas.DataFrame(host_total_threads)
+    # No +1 to len
+    host_total_x = [z for z in range(1, len(host_total_threads))]
+    host_total_y = [statistics.median(z) for z in host_total_threads[1:]]
+
+    remote_total_x = [z for z in range(1, len(host_total_threads))]
+    remote_total_y = [statistics.median(z) for z in remote_total_threads[1:]]
+
+    seaborn.set_theme(style="ticks", palette="pastel")
+    seaborn.lineplot(x=host_total_x, y=host_total_y)
+    seaborn.lineplot(x=remote_total_x, y=remote_total_y)
     plt.show()
-    #plt.savefig("here.png")
 
-    #c_df = pandas.DataFrame(c)
-    #p_df = pandas.DataFrame(p)
+    #seaborn.boxplot(data=host_total_threads_df, x=control_x, y=control_y)
+    print(len(host_total_threads))
+    #seaborn.boxplot(x=control_x, y=host_total_threads[1:])
+    plt.show()
+    #HERE
+   
 
-    #seaborn.lineplot(data=c_df, x=control_x, y=control_y)
-    #seaborn.lineplot(data=p_df, x=thread_x, y=thread_y)
-    return
+#    for x in data["cpu_utilization_per_thread_count"]:
+#        # FOR EACH THREAD
+#
+#        #print("{}:{}".format(x, y))
+#        print("BOO ")
+#        print(len(x))
+#        for y in x:
+#            print(len(y))
+#            print("HI {}".format(y))
+#        #print("{}:{}".format(x, y))
+#        #print(" {}".format(x["host_total"]))
+#        #print(" {}".format(x["host_system"]))
+#        #print(" {}".format(x["host_user"]))
+#        #print(" {}".format(x["remote_total"]))
+#        #print(" {}".format(x["remote_system"]))
+#        #print(" {}".format(x["remote_user"]))
+#
+#    # throughput_per_thread_count
+#    #data_y = [y for y in data]
+#    # cpu_utilization_per_thread_count
+#    #print(data_y)
+#    cpu_util = pandas.DataFrame(data["cpu_utilization_per_thread_count"])
+#    print("\n\n\n\n\n\n\n\n\n\n")
+#    print("cpu_util {}".format(cpu_util))
+#    #data_y = [statistics.median(y) for y in data]
+#    #seaborn.lineplot(data=cpu_util)#, x=data_x, y=data_y)
+#    seaborn.lineplot(data=cpu_util)#,x=data_x, y=data_y)
+#
+#    throughput = pandas.DataFrame(data["throughput_per_thread_count"])
+#    print("throughput {}".format(throughput))
+#    seaborn.lineplot(data=throughput)#, x=data_x, y=data_y)
+#    plt.show()
+#    #plt.savefig("here.png")
+#
+#    #c_df = pandas.DataFrame(c)
+#    #p_df = pandas.DataFrame(p)
+#
+#    #seaborn.lineplot(data=c_df, x=control_x, y=control_y)
+#    #seaborn.lineplot(data=p_df, x=thread_x, y=thread_y)
+#    return
 
 def print_control():
     output_directory = OUTPUT_DIRECTORY
@@ -300,7 +372,7 @@ def print_control():
         print("ERROR: output directory {} does not exist!".format(output_directory))
         return
     #summary_filename="control_summary.json"
-    summary_filename="control_graph.json"
+    summary_filename="c_graph.json"
 
     directories = os.listdir(output_directory)
     for directory in directories:
@@ -379,7 +451,7 @@ def print_test():
 
 def summarize_control_runs():
     control_filename = "c_{}_{}.txt"
-    summarize_runs(output_directory=OUTPUT_DIRECTORY, filename=control_filename, summary_filename="CONTROL_SUMMARY.json")
+    summarize_runs(output_directory=OUTPUT_DIRECTORY, filename=control_filename, summary_filename="c_summary.json")
 
 def summarize_ip2_runs():
     control_filename = "ip2_{}_{}.txt"
@@ -390,9 +462,11 @@ def main():
     #make_folder(name="control")
     
     #run_control()
-    summarize_control_runs()
+    #summarize_control_runs()
+    #parse_summary_with_json(output_directory=OUTPUT_DIRECTORY, summary_filename="c_summary.json", output="c_graph.json")
+    print_control()
+
     #run_test()
-    parse_summary_with_json(output_directory=OUTPUT_DIRECTORY, summary_filename="CONTROL_SUMMARY.json", output="control_graph.json")
     #run_ip2()
     #summarize_ip2_runs()
     #parse_summary_with_json(output_directory=OUTPUT_DIRECTORY, summary_filename="IP2_SUMMARY.json")
@@ -407,7 +481,6 @@ def main():
     #run_test()
     #print_test()
     #print_graph()
-    print_control()
 
 if __name__ == "__main__":
     print("main")
