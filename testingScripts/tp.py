@@ -235,6 +235,7 @@ def parse_summary_with_json(output_directory, summary_filename, output):
 
                 # Add the run
                 #print("threads {} tpt: {}".format(thread_num, throughput_per_thread_count))
+
                 throughput_per_thread_count[thread_num].append(run["end"]["sum_sent"]["bits_per_second"])
                 cpu_utilization_per_thread_count[thread_num].append(run["end"]["cpu_utilization_percent"])
                 print(throughput_per_thread_count)
@@ -250,12 +251,58 @@ def parse_summary_with_json(output_directory, summary_filename, output):
         output_file = os.path.join(output_directory, directory, output)
         with open(output_file, "w") as o:
             o.write(json.dumps(summary))
+    return
 
 
 def parse_control():
     print("Parse Control")
     control_filename = "c_{}_{}.txt"
     parse_with_json(output_directory=OUTPUT_DIRECTORY, filename=control_filename, summary_filename="control_summary.json")
+    return
+
+def host_and_remote_total_graph(cpu_utilization_per_thread_count):
+    print("host_and_remote_total_graph")
+    if not cpu_utilization_per_thread_count:
+        print("ERROR no cpu_utilization_per_thread_count")
+        return
+    host_total_threads = []
+    remote_total_threads = []
+
+    for thread in cpu_utilization_per_thread_count:
+        host_total_per_thread_count = []
+        remote_total_per_thread_count = []
+
+        #print("thread: {}".format(thread))
+
+        for run in thread:
+            host_total_per_thread_count.append(run["host_total"])
+            remote_total_per_thread_count.append(run["remote_total"])
+
+        print("host_total_per_thread_count {}".format(host_total_per_thread_count))
+        #host_total_threads.append(statistics.median(host_total_per_thread_count))
+
+        host_total_threads.append(host_total_per_thread_count)
+        remote_total_threads.append(remote_total_per_thread_count)
+    print("host_total_threads {}".format(host_total_threads))
+    host_total_threads_df = pandas.DataFrame(host_total_threads)
+
+    # No +1 to len
+    host_total_x = [z for z in range(1, len(host_total_threads))]
+    host_total_y = [statistics.median(z) for z in host_total_threads[1:]]
+
+    remote_total_x = [z for z in range(1, len(host_total_threads))]
+    remote_total_y = [statistics.median(z) for z in remote_total_threads[1:]]
+
+    seaborn.set_theme(style="ticks", palette="pastel")
+
+    seaborn.lineplot(x=host_total_x, y=host_total_y)
+    seaborn.lineplot(x=remote_total_x, y=remote_total_y)
+    plt.show()
+    return
+
+def test_vs_control_throughput():
+    print("test_vs_control_throughput")
+    # TODO: compare same day?
     return
 
 def print_graph(filename):
@@ -274,6 +321,10 @@ def print_graph(filename):
     print("DATA: {}".format(data))
     print()
     print()
+
+
+
+
     data_x = [z for z in range(1, NUM_THREADS)]
     print(data_x)
     #data_y = [statistics.median(y) for (x, y) in data]
@@ -283,45 +334,11 @@ def print_graph(filename):
     #host_total
     #remote_system
     util = data["cpu_utilization_per_thread_count"]
-    print("cpu_utilization_per_thread_count")
-    # TODO AUTOMATICALLY GET THREAD
-    host_total_threads = []
 
-    remote_total_threads = []
+    host_and_remote_total_graph(util)
 
-    for thread in util:
-        host_total_per_thread_count = []
-        remote_total_per_thread_count = []
+    test_vs_control_throughput()
 
-        #print("thread: {}".format(thread))
-
-        for run in thread:
-            host_total_per_thread_count.append(run["host_total"])
-            remote_total_per_thread_count.append(run["remote_total"])
-
-        print("host_total_per_thread_count {}".format(host_total_per_thread_count))
-        #host_total_threads.append(statistics.median(host_total_per_thread_count))
-
-        host_total_threads.append(host_total_per_thread_count)
-        remote_total_threads.append(remote_total_per_thread_count)
-    print("host_total_threads {}".format(host_total_threads))
-    host_total_threads_df = pandas.DataFrame(host_total_threads)
-    # No +1 to len
-    host_total_x = [z for z in range(1, len(host_total_threads))]
-    host_total_y = [statistics.median(z) for z in host_total_threads[1:]]
-
-    remote_total_x = [z for z in range(1, len(host_total_threads))]
-    remote_total_y = [statistics.median(z) for z in remote_total_threads[1:]]
-
-    seaborn.set_theme(style="ticks", palette="pastel")
-    seaborn.lineplot(x=host_total_x, y=host_total_y)
-    seaborn.lineplot(x=remote_total_x, y=remote_total_y)
-    plt.show()
-
-    #seaborn.boxplot(data=host_total_threads_df, x=control_x, y=control_y)
-    print(len(host_total_threads))
-    #seaborn.boxplot(x=control_x, y=host_total_threads[1:])
-    plt.show()
     #HERE
    
 
@@ -453,6 +470,10 @@ def summarize_control_runs():
     control_filename = "c_{}_{}.txt"
     summarize_runs(output_directory=OUTPUT_DIRECTORY, filename=control_filename, summary_filename="c_summary.json")
 
+def summarize_test_runs():
+    control_filename = "t_{}_{}.txt"
+    summarize_runs(output_directory=OUTPUT_DIRECTORY, filename=control_filename, summary_filename="t_summary.json")
+
 def summarize_ip2_runs():
     control_filename = "ip2_{}_{}.txt"
     summarize_runs(output_directory=OUTPUT_DIRECTORY, filename=control_filename, summary_filename="IP2_SUMMARY.json")
@@ -467,6 +488,9 @@ def main():
     print_control()
 
     #run_test()
+    #summarize_test_runs()
+    #parse_summary_with_json(output_directory=OUTPUT_DIRECTORY, summary_filename="t_summary.json", output="t_graph.json")
+
     #run_ip2()
     #summarize_ip2_runs()
     #parse_summary_with_json(output_directory=OUTPUT_DIRECTORY, summary_filename="IP2_SUMMARY.json")
